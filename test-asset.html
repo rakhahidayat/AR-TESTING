@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D Asset Accessibility Test</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+        color: #333;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 28px;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 14px;
+      }
+
+      .content {
+        padding: 30px;
+      }
+
+      .status-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+
+      .summary-card {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        border: 2px solid transparent;
+      }
+
+      .summary-card.total {
+        border-color: #667eea;
+      }
+
+      .summary-card.accessible {
+        border-color: #4caf50;
+      }
+
+      .summary-card.not-accessible {
+        border-color: #f44336;
+      }
+
+      .summary-card.checking {
+        border-color: #ff9800;
+      }
+
+      .summary-number {
+        font-size: 36px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .summary-label {
+        font-size: 14px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .summary-card.total .summary-number {
+        color: #667eea;
+      }
+
+      .summary-card.accessible .summary-number {
+        color: #4caf50;
+      }
+
+      .summary-card.not-accessible .summary-number {
+        color: #f44336;
+      }
+
+      .summary-card.checking .summary-number {
+        color: #ff9800;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: #f8f9fa;
+        color: #333;
+        border: 2px solid #dee2e6;
+      }
+
+      .btn-secondary:hover {
+        background: #e9ecef;
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .asset-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .asset-item {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border-left: 4px solid #dee2e6;
+        transition: all 0.3s;
+      }
+
+      .asset-item:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+      }
+
+      .asset-item.accessible {
+        border-left-color: #4caf50;
+        background: #f1f8f4;
+      }
+
+      .asset-item.not-accessible {
+        border-left-color: #f44336;
+        background: #fff5f5;
+      }
+
+      .asset-item.checking {
+        border-left-color: #ff9800;
+        background: #fff8e1;
+      }
+
+      .asset-icon {
+        font-size: 24px;
+        margin-right: 15px;
+        width: 40px;
+        text-align: center;
+      }
+
+      .asset-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .asset-name {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+      }
+
+      .asset-path {
+        font-size: 12px;
+        color: #666;
+        word-break: break-all;
+        font-family: "Courier New", monospace;
+      }
+
+      .asset-status {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+        margin-left: 15px;
+      }
+
+      .asset-status.accessible {
+        background: #4caf50;
+        color: white;
+      }
+
+      .asset-status.not-accessible {
+        background: #f44336;
+        color: white;
+      }
+
+      .asset-status.checking {
+        background: #ff9800;
+        color: white;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.6;
+        }
+      }
+
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        color: white;
+        font-size: 20px;
+      }
+
+      .loading-overlay.hidden {
+        display: none;
+      }
+
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error-message {
+        background: #fff5f5;
+        border-left: 4px solid #f44336;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        color: #c62828;
+      }
+
+      .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        color: #1565c0;
+        font-size: 14px;
+      }
+
+      #view-3d-btn {
+        background: #9c27b0;
+        color: white;
+      }
+
+      #view-3d-btn:hover {
+        background: #7b1fa2;
+      }
+
+      #view-3d-btn.loaded {
+        background: #4caf50;
+      }
+
+      #view-3d-btn.loaded:hover {
+        background: #45a049;
+      }
+
+      #model-viewer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 2000;
+        display: none;
+        flex-direction: column;
+      }
+
+      #model-viewer-overlay.visible {
+        display: flex;
+      }
+
+      .viewer-header {
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .viewer-title {
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .close-viewer-btn {
+        padding: 10px 20px;
+        background: #f44336;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .close-viewer-btn:hover {
+        background: #d32f2f;
+      }
+
+      #model-viewer-scene {
+        flex: 1;
+        width: 100%;
+        position: relative;
+      }
+
+      .viewer-controls {
+        padding: 15px 20px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .viewer-controls button {
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .viewer-controls button:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .model-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        text-align: center;
+        z-index: 10;
+      }
+
+      .model-loading.hidden {
+        display: none;
+      }
+
+      @media (max-width: 600px) {
+        .header h1 {
+          font-size: 24px;
+        }
+
+        .asset-item {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .asset-status {
+          margin-left: 0;
+          margin-top: 10px;
+          width: 100%;
+          text-align: center;
+        }
+
+        .controls {
+          flex-direction: column;
+        }
+
+        .btn {
+          width: 100%;
+        }
+
+        .viewer-header {
+          flex-direction: column;
+          gap: 15px;
+        }
+
+        .viewer-controls {
+          flex-direction: column;
+        }
+
+        .viewer-controls button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading-overlay hidden" id="loading-overlay">
+      <div>
+        <div class="spinner"></div>
+        <div>Checking assets...</div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="header">
+        <h1>🔍 3D Asset Accessibility Test</h1>
+        <p>Test if all AR assets are accessible from your browser</p>
+      </div>
+
+      <div class="content">
+        <div class="info-box">
+          <strong>ℹ️ Info:</strong> This page checks if all required 3D assets
+          (marker file, GLTF model, textures) are accessible from your current
+          browser. Use this to verify asset accessibility before using the AR
+          application.
+        </div>
+
+        <div class="status-summary" id="status-summary">
+          <div class="summary-card total">
+            <div class="summary-number" id="total-count">-</div>
+            <div class="summary-label">Total Assets</div>
+          </div>
+          <div class="summary-card checking">
+            <div class="summary-number" id="checking-count">-</div>
+            <div class="summary-label">Checking</div>
+          </div>
+          <div class="summary-card accessible">
+            <div class="summary-number" id="accessible-count">-</div>
+            <div class="summary-label">Accessible</div>
+          </div>
+          <div class="summary-card not-accessible">
+            <div class="summary-number" id="not-accessible-count">-</div>
+            <div class="summary-label">Not Accessible</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-primary" id="check-btn">
+            Check All Assets
+          </button>
+          <button class="btn btn-secondary" id="refresh-btn">
+            Refresh Page
+          </button>
+          <button class="btn" id="view-3d-btn">View 3D Model</button>
+        </div>
+
+        <div id="error-container"></div>
+
+        <div class="asset-list" id="asset-list">
+          <div style="text-align: center; padding: 40px; color: #999">
+            Click "Check All Assets" to start testing
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Model Viewer Overlay -->
+    <div id="model-viewer-overlay">
+      <div class="viewer-header">
+        <div class="viewer-title">3D Model Viewer - Cyberpunk Car</div>
+        <button class="close-viewer-btn" id="close-viewer-btn">Close</button>
+      </div>
+      <div id="model-viewer-scene">
+        <div class="model-loading" id="model-loading">
+          <div class="spinner"></div>
+          <div style="margin-top: 20px" id="loading-text">
+            Loading 3D model...
+          </div>
+          <div
+            style="margin-top: 10px; font-size: 12px; opacity: 0.7"
+            id="loading-status"
+          ></div>
+        </div>
+        <a-scene
+          id="aframe-scene"
+          embedded
+          vr-mode-ui="enabled: false"
+          renderer="antialias: true; colorManagement: true; sortObjects: true"
+          style="width: 100%; height: 100%"
+        >
+          <a-assets>
+            <a-asset-item
+              id="car-model-asset"
+              src="./cyberpunk_car_gltf/scene.gltf"
+            ></a-asset-item>
+          </a-assets>
+
+          <a-camera
+            id="viewer-camera"
+            position="0 1.6 3"
+            look-controls="enabled: true; touchEnabled: true"
+            wasd-controls="enabled: false"
+            cursor="rayOrigin: mouse"
+          ></a-camera>
+
+          <!-- 3D Model -->
+          <a-entity id="car-model-entity" position="0 0 0">
+            <a-gltf-model
+              id="car-model"
+              src="#car-model-asset"
+              scale="0.02 0.02 0.02"
+              rotation="0 0 0"
+              animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
+            ></a-gltf-model>
+          </a-entity>
+
+          <!-- Lighting -->
+          <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+          <a-light
+            type="directional"
+            position="2 2 2"
+            color="#ffffff"
+            intensity="1.2"
+          ></a-light>
+          <a-light
+            type="directional"
+            position="-2 2 -2"
+            color="#4a9eff"
+            intensity="0.6"
+          ></a-light>
+          <a-light
+            type="point"
+            position="0 2 2"
+            color="#ff6b9d"
+            intensity="0.5"
+          ></a-light>
+          <a-light
+            type="point"
+            position="0 2 -2"
+            color="#4caf50"
+            intensity="0.4"
+          ></a-light>
+
+          <!-- Ground plane for reference -->
+          <a-plane
+            position="0 0 0"
+            rotation="-90 0 0"
+            width="10"
+            height="10"
+            color="#7f8c8d"
+            opacity="0.3"
+          ></a-plane>
+        </a-scene>
+      </div>
+      <div class="viewer-controls">
+        <button id="reset-camera-btn">Reset Camera</button>
+        <button id="rotate-model-btn">Toggle Rotation</button>
+        <div style="flex: 1"></div>
+        <div style="font-size: 12px; opacity: 0.8">
+          Use mouse to rotate • Scroll to zoom • Click and drag to move
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Define all assets to check
+      const assetsToCheck = [
+        {
+          name: "Marker File",
+          path: "./marker.mind",
+          type: "file",
+          icon: "🎯",
+        },
+        {
+          name: "3D Model (GLTF)",
+          path: "./cyberpunk_car_gltf/scene.gltf",
+          type: "file",
+          icon: "🚗",
+        },
+        {
+          name: "3D Model Binary",
+          path: "./cyberpunk_car_gltf/scene.bin",
+          type: "file",
+          icon: "📦",
+        },
+        {
+          name: "Base Color Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_baseColor.png",
+          type: "texture",
+          icon: "🎨",
+        },
+        {
+          name: "Emissive Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_emissive.png",
+          type: "texture",
+          icon: "✨",
+        },
+        {
+          name: "Metallic Roughness Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_metallicRoughness.png",
+          type: "texture",
+          icon: "⚙️",
+        },
+        {
+          name: "Normal Map Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_normal.png",
+          type: "texture",
+          icon: "🗺️",
+        },
+      ];
+
+      let assetResults = [];
+
+      // Check asset accessibility
+      async function checkAssetAccessibility(asset) {
+        try {
+          const response = await fetch(asset.path, { method: "HEAD" });
+          return {
+            ...asset,
+            accessible: response.ok,
+            status: response.ok ? "accessible" : "not-accessible",
+            statusCode: response.status,
+            statusText: response.statusText,
+            size: response.headers.get("content-length")
+              ? `${(
+                  parseInt(response.headers.get("content-length")) / 1024
+                ).toFixed(2)} KB`
+              : "Unknown",
+          };
+        } catch (error) {
+          return {
+            ...asset,
+            accessible: false,
+            status: "not-accessible",
+            error: error.message,
+            statusCode: null,
+            statusText: "Network Error",
+          };
+        }
+      }
+
+      // Update summary cards
+      function updateSummary() {
+        const total = assetResults.length;
+        const accessible = assetResults.filter((a) => a.accessible).length;
+        const notAccessible = assetResults.filter((a) => !a.accessible).length;
+        const checking = assetResults.filter(
+          (a) => a.status === "checking"
+        ).length;
+
+        document.getElementById("total-count").textContent = total;
+        document.getElementById("accessible-count").textContent = accessible;
+        document.getElementById("not-accessible-count").textContent =
+          notAccessible;
+        document.getElementById("checking-count").textContent = checking;
+      }
+
+      // Display asset results
+      function displayAssets() {
+        const assetList = document.getElementById("asset-list");
+        assetList.innerHTML = "";
+
+        if (assetResults.length === 0) {
+          assetList.innerHTML =
+            '<div style="text-align: center; padding: 40px; color: #999;">No assets checked yet</div>';
+          return;
+        }
+
+        assetResults.forEach((result) => {
+          const assetItem = document.createElement("div");
+          assetItem.className = `asset-item ${result.status}`;
+
+          const statusText = result.accessible
+            ? "✓ Accessible"
+            : `✗ Not Accessible${
+                result.statusCode ? ` (${result.statusCode})` : ""
+              }`;
+
+          const sizeInfo = result.size ? ` • ${result.size}` : "";
+
+          assetItem.innerHTML = `
+            <div class="asset-icon">${result.icon || "📄"}</div>
+            <div class="asset-info">
+              <div class="asset-name">${result.name}</div>
+              <div class="asset-path" title="${result.path}">${
+            result.path
+          }${sizeInfo}</div>
+              ${
+                result.error
+                  ? `<div style="color: #f44336; font-size: 12px; margin-top: 5px;">Error: ${result.error}</div>`
+                  : ""
+              }
+            </div>
+            <div class="asset-status ${result.status}">${statusText}</div>
+          `;
+          assetList.appendChild(assetItem);
+        });
+      }
+
+      // Check all assets
+      async function checkAllAssets() {
+        const loadingOverlay = document.getElementById("loading-overlay");
+        const checkBtn = document.getElementById("check-btn");
+        const errorContainer = document.getElementById("error-container");
+
+        errorContainer.innerHTML = "";
+        checkBtn.disabled = true;
+        loadingOverlay.classList.remove("hidden");
+
+        // Reset results
+        assetResults = assetsToCheck.map((asset) => ({
+          ...asset,
+          status: "checking",
+          accessible: false,
+        }));
+
+        displayAssets();
+        updateSummary();
+
+        try {
+          // Check each asset
+          const results = await Promise.all(
+            assetsToCheck.map((asset) => checkAssetAccessibility(asset))
+          );
+
+          assetResults = results;
+          displayAssets();
+          updateSummary();
+
+          // Show error if any assets are not accessible
+          const notAccessible = results.filter((r) => !r.accessible);
+          if (notAccessible.length > 0) {
+            errorContainer.innerHTML = `
+              <div class="error-message">
+                <strong>⚠️ Warning:</strong> ${notAccessible.length} asset(s) are not accessible. 
+                Make sure the server is running and all files are in the correct location.
+              </div>
+            `;
+          } else {
+            errorContainer.innerHTML = `
+              <div style="background: #f1f8f4; border-left: 4px solid #4caf50; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #2e7d32;">
+                <strong>✓ Success:</strong> All assets are accessible!
+              </div>
+            `;
+          }
+        } catch (error) {
+          errorContainer.innerHTML = `
+            <div class="error-message">
+              <strong>❌ Error:</strong> Failed to check assets: ${error.message}
+            </div>
+          `;
+        } finally {
+          loadingOverlay.classList.add("hidden");
+          checkBtn.disabled = false;
+        }
+      }
+
+      // 3D Model Viewer Functions
+      let modelRotationEnabled = true;
+      let carModelEntity = null;
+      let cameraEntity = null;
+      let modelLoadingCheckInterval = null;
+
+      // Detect mobile device
+      function isMobileDevice() {
+        return (
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          ) || window.innerWidth < 768
+        );
+      }
+
+      function show3DViewer() {
+        const overlay = document.getElementById("model-viewer-overlay");
+        const loadingIndicator = document.getElementById("model-loading");
+        const scene = document.getElementById("aframe-scene");
+
+        overlay.classList.add("visible");
+        loadingIndicator.classList.remove("hidden");
+
+        // Clear any existing interval
+        if (modelLoadingCheckInterval) {
+          clearInterval(modelLoadingCheckInterval);
+          modelLoadingCheckInterval = null;
+        }
+
+        // Force scene to initialize
+        if (scene && !scene.hasLoaded) {
+          scene.setAttribute("embedded", true);
+        }
+
+        // Check if model is loaded function
+        const checkModelLoaded = () => {
+          const carModel = document.getElementById("car-model");
+          if (carModel) {
+            // Multiple checks for model loading
+            const hasObject3D = carModel.object3D !== undefined;
+            const hasChildren =
+              carModel.object3D &&
+              carModel.object3D.children &&
+              carModel.object3D.children.length > 0;
+            const hasGeometry =
+              carModel.object3D &&
+              carModel.object3D.traverse &&
+              (() => {
+                let hasGeo = false;
+                carModel.object3D.traverse((child) => {
+                  if (child.geometry) hasGeo = true;
+                });
+                return hasGeo;
+              })();
+
+            return hasObject3D && (hasChildren || hasGeometry);
+          }
+          return false;
+        };
+
+        // Function to update loading status
+        const updateLoadingStatus = (message) => {
+          const statusEl = document.getElementById("loading-status");
+          if (statusEl) {
+            statusEl.textContent = message;
+          }
+        };
+
+        // Function to hide loading indicator
+        const hideLoading = () => {
+          loadingIndicator.classList.add("hidden");
+          if (modelLoadingCheckInterval) {
+            clearInterval(modelLoadingCheckInterval);
+            modelLoadingCheckInterval = null;
+          }
+        };
+
+        // Wait for A-Frame to initialize
+        const initScene = () => {
+          updateLoadingStatus("Initializing scene...");
+          const sceneEl = document.getElementById("aframe-scene");
+          if (!sceneEl) {
+            setTimeout(initScene, 100);
+            return;
+          }
+
+          // Check if scene is already loaded
+          if (sceneEl.hasLoaded) {
+            updateLoadingStatus("Scene ready, loading model...");
+            handleSceneReady();
+          } else {
+            updateLoadingStatus("Waiting for scene to load...");
+            sceneEl.addEventListener(
+              "loaded",
+              () => {
+                updateLoadingStatus("Scene ready, loading model...");
+                handleSceneReady();
+              },
+              { once: true }
+            );
+          }
+
+          // Fallback: if scene doesn't load in 2 seconds, proceed anyway
+          setTimeout(() => {
+            if (!sceneEl.hasLoaded) {
+              console.warn("⚠️ Scene loading timeout, proceeding anyway");
+              updateLoadingStatus("Scene timeout, attempting to load model...");
+              handleSceneReady();
+            }
+          }, 2000);
+        };
+
+        const handleSceneReady = () => {
+          console.log("A-Frame scene ready");
+          updateLoadingStatus("Setting up camera...");
+          cameraEntity = document.querySelector("#aframe-scene a-camera");
+          carModelEntity = document.getElementById("car-model-entity");
+
+          updateLoadingStatus("Locating model element...");
+          const carModel = document.getElementById("car-model");
+          if (!carModel) {
+            console.error("Car model element not found");
+            updateLoadingStatus("Model element not found, retrying...");
+            setTimeout(() => handleSceneReady(), 200);
+            return;
+          }
+
+          // Check if already loaded
+          if (checkModelLoaded()) {
+            console.log("✅ Model already loaded");
+            updateLoadingStatus("Model loaded!");
+            setTimeout(hideLoading, 500);
+            return;
+          }
+
+          updateLoadingStatus("Downloading model files...");
+          // Listen for model loaded events
+          const onModelLoaded = () => {
+            console.log("✅ Model loaded event fired");
+            updateLoadingStatus("Model loaded successfully!");
+            setTimeout(hideLoading, 500);
+          };
+
+          carModel.addEventListener("model-loaded", onModelLoaded, {
+            once: true,
+          });
+          carModel.addEventListener("loaded", onModelLoaded, { once: true });
+
+          // Aggressive polling for mobile devices (more reliable)
+          const pollInterval = isMobileDevice() ? 200 : 500;
+          const maxPolls = isMobileDevice() ? 100 : 50; // 20 seconds on mobile, 25 seconds on desktop
+          let pollCount = 0;
+
+          updateLoadingStatus("Checking model status...");
+          modelLoadingCheckInterval = setInterval(() => {
+            pollCount++;
+            if (checkModelLoaded()) {
+              console.log("✅ Model loaded (polling detected)");
+              updateLoadingStatus("Model loaded successfully!");
+              setTimeout(hideLoading, 500);
+            } else {
+              // Update status periodically
+              if (pollCount % 10 === 0) {
+                updateLoadingStatus(
+                  `Loading... (${Math.min(
+                    (pollCount * pollInterval) / 1000,
+                    timeoutDuration / 1000
+                  ).toFixed(1)}s)`
+                );
+              }
+              if (pollCount >= maxPolls) {
+                console.warn("⚠️ Model loading timeout after polling");
+                updateLoadingStatus("Loading timeout - model may still appear");
+                hideLoading();
+              }
+            }
+          }, pollInterval);
+
+          // Fallback timeout (longer for mobile)
+          const timeoutDuration = isMobileDevice() ? 15000 : 8000;
+          setTimeout(() => {
+            if (checkModelLoaded()) {
+              console.log("✅ Model loaded (timeout check)");
+              updateLoadingStatus("Model loaded!");
+            } else {
+              console.warn("⚠️ Model loading timeout");
+              updateLoadingStatus("Timeout - hiding loading indicator");
+            }
+            hideLoading();
+          }, timeoutDuration);
+        };
+
+        // Start initialization
+        setTimeout(initScene, 100);
+
+        // Force scene to play (important for mobile)
+        setTimeout(() => {
+          const sceneEl = document.getElementById("aframe-scene");
+          if (sceneEl) {
+            if (!sceneEl.isPlaying) {
+              sceneEl.play();
+            }
+            // Force render
+            if (sceneEl.render) {
+              sceneEl.render();
+            }
+          }
+        }, 300);
+      }
+
+      function hide3DViewer() {
+        const overlay = document.getElementById("model-viewer-overlay");
+        overlay.classList.remove("visible");
+
+        // Clean up loading check interval
+        if (modelLoadingCheckInterval) {
+          clearInterval(modelLoadingCheckInterval);
+          modelLoadingCheckInterval = null;
+        }
+      }
+
+      function resetCamera() {
+        if (cameraEntity) {
+          cameraEntity.setAttribute("position", "0 1.6 3");
+          cameraEntity.setAttribute("rotation", "0 0 0");
+          console.log("Camera reset");
+        }
+      }
+
+      function toggleRotation() {
+        modelRotationEnabled = !modelRotationEnabled;
+        const carModel = document.getElementById("car-model");
+        if (carModel) {
+          if (modelRotationEnabled) {
+            carModel.setAttribute(
+              "animation",
+              "property: rotation; to: 0 360 0; loop: true; dur: 10000"
+            );
+          } else {
+            carModel.removeAttribute("animation");
+          }
+        }
+        const btn = document.getElementById("rotate-model-btn");
+        btn.textContent = modelRotationEnabled
+          ? "Disable Rotation"
+          : "Enable Rotation";
+      }
+
+      // Check if 3D model is accessible before allowing viewer
+      async function checkModelAccessible() {
+        try {
+          const response = await fetch("./cyberpunk_car_gltf/scene.gltf", {
+            method: "HEAD",
+          });
+          return response.ok;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      // Event listeners
+      document.getElementById("check-btn").addEventListener("click", () => {
+        checkAllAssets();
+      });
+
+      document.getElementById("refresh-btn").addEventListener("click", () => {
+        location.reload();
+      });
+
+      document
+        .getElementById("view-3d-btn")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("view-3d-btn");
+          const isAccessible = await checkModelAccessible();
+
+          if (!isAccessible) {
+            alert(
+              "3D model file is not accessible. Please check that:\n" +
+                "1. The server is running\n" +
+                "2. The file ./cyberpunk_car_gltf/scene.gltf exists\n" +
+                "3. Run 'Check All Assets' first to verify accessibility"
+            );
+            return;
+          }
+
+          show3DViewer();
+          btn.classList.add("loaded");
+        });
+
+      document
+        .getElementById("close-viewer-btn")
+        .addEventListener("click", () => {
+          hide3DViewer();
+        });
+
+      document
+        .getElementById("reset-camera-btn")
+        .addEventListener("click", () => {
+          resetCamera();
+        });
+
+      document
+        .getElementById("rotate-model-btn")
+        .addEventListener("click", () => {
+          toggleRotation();
+        });
+
+      // Close viewer on Escape key
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          const overlay = document.getElementById("model-viewer-overlay");
+          if (overlay.classList.contains("visible")) {
+            hide3DViewer();
+          }
+        }
+      });
+
+      // Auto-check on page load
+      window.addEventListener("DOMContentLoaded", () => {
+        // Small delay to ensure page is fully loaded
+        setTimeout(() => {
+          checkAllAssets().then(() => {
+            // Enable 3D viewer button if model is accessible
+            const gltfAsset = assetResults.find(
+              (a) => a.name === "3D Model (GLTF)"
+            );
+            if (gltfAsset && gltfAsset.accessible) {
+              const btn = document.getElementById("view-3d-btn");
+              btn.classList.add("loaded");
+              btn.textContent = "View 3D Model ✓";
+            }
+          });
+        }, 500);
+      });
+    </script>
+  </body>
+</html>

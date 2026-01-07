@@ -1,0 +1,21 @@
+{
+  "name": "ar-rakha-logo",
+  "version": "1.0.0",
+  "description": "AR project untuk menampilkan logo 3D RAKHA menggunakan MindAR.js",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "npx http-server -p 8000",
+    "https": "node server-https.js",
+    "https:mkcert": "mkcert localhost && node server-https.js"
+  },
+  "keywords": [
+    "ar",
+    "augmented-reality",
+    "mindar",
+    "aframe",
+    "rakha"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

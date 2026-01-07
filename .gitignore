@@ -1,0 +1,10 @@
+node_modules/
+targets.mind
+*.log
+.DS_Store
+
+# SSL Certificates (jangan commit certificate)
+localhost.pem
+localhost-key.pem
+*.pem
+!package.json

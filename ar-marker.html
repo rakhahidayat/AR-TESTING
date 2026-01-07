@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AR Marker Viewer</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        background: #000;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      #camera-permission-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 10000;
+        text-align: center;
+        padding: 20px;
+      }
+
+      #camera-permission-overlay.hidden {
+        display: none;
+      }
+
+      .permission-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+      }
+
+      .permission-title {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 15px;
+      }
+
+      .permission-text {
+        font-size: 18px;
+        margin-bottom: 30px;
+        max-width: 500px;
+        line-height: 1.6;
+      }
+
+      .permission-button {
+        padding: 15px 40px;
+        font-size: 18px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s;
+      }
+
+      .permission-button:hover {
+        background: #45a049;
+        transform: scale(1.05);
+      }
+
+      .permission-button:active {
+        transform: scale(0.98);
+      }
+
+      .permission-button:disabled {
+        background: #666;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      #loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 9999;
+      }
+
+      #loading-overlay.hidden {
+        display: none;
+      }
+
+      .loading-animation {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-text {
+        font-size: 18px;
+      }
+
+      #scanning-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 9998;
+        pointer-events: none;
+      }
+
+      #scanning-overlay.hidden {
+        display: none;
+      }
+
+      .scanning-text {
+        font-size: 24px;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .scanning-animation {
+        width: 200px;
+        height: 200px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      #error-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 10001;
+        text-align: center;
+        padding: 20px;
+      }
+
+      #error-overlay.hidden {
+        display: none;
+      }
+
+      .error-text {
+        font-size: 18px;
+        margin-bottom: 20px;
+        max-width: 600px;
+        line-height: 1.6;
+      }
+
+      .retry-button {
+        padding: 12px 30px;
+        font-size: 16px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+      }
+
+      .retry-button:hover {
+        background: #45a049;
+      }
+
+      #ar-scene {
+        display: none;
+        width: 100%;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+
+      #ar-scene.visible {
+        display: block;
+      }
+
+      #asset-status-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 10002;
+        text-align: center;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      #asset-status-overlay.hidden {
+        display: none;
+      }
+
+      .asset-status-container {
+        max-width: 600px;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 30px;
+        margin: 20px 0;
+      }
+
+      .asset-status-title {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+
+      .asset-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        margin: 10px 0;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        border-left: 4px solid #666;
+      }
+
+      .asset-item.accessible {
+        border-left-color: #4caf50;
+      }
+
+      .asset-item.not-accessible {
+        border-left-color: #f44336;
+      }
+
+      .asset-item.checking {
+        border-left-color: #ff9800;
+      }
+
+      .asset-name {
+        font-size: 16px;
+        font-weight: bold;
+        flex: 1;
+        text-align: left;
+        margin-right: 15px;
+        word-break: break-all;
+      }
+
+      .asset-status {
+        font-size: 14px;
+        padding: 5px 15px;
+        border-radius: 20px;
+        white-space: nowrap;
+      }
+
+      .asset-status.accessible {
+        background: #4caf50;
+        color: white;
+      }
+
+      .asset-status.not-accessible {
+        background: #f44336;
+        color: white;
+      }
+
+      .asset-status.checking {
+        background: #ff9800;
+        color: white;
+      }
+
+      .close-asset-status-btn {
+        margin-top: 20px;
+        padding: 12px 30px;
+        font-size: 16px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      .close-asset-status-btn:hover {
+        background: #45a049;
+      }
+
+      .show-asset-status-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        font-size: 14px;
+        background: rgba(76, 175, 80, 0.8);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        z-index: 10003;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      .show-asset-status-btn:hover {
+        background: rgba(76, 175, 80, 1);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Asset Status Overlay -->
+    <div id="asset-status-overlay" class="hidden">
+      <div class="asset-status-container">
+        <div class="asset-status-title">3D Asset Status</div>
+        <div id="asset-list"></div>
+        <button class="close-asset-status-btn" id="close-asset-status-btn">
+          Close
+        </button>
+      </div>
+    </div>
+
+    <!-- Show Asset Status Button -->
+    <button class="show-asset-status-btn" id="show-asset-status-btn">
+      Check Assets
+    </button>
+
+    <!-- Camera Permission Overlay -->
+    <div id="camera-permission-overlay">
+      <div class="permission-icon">📷</div>
+      <div class="permission-title">Camera Access Required</div>
+      <div class="permission-text">
+        This AR application requires camera access to detect markers and display
+        augmented reality content.
+        <br /><br />
+        Please click the button below to grant camera access.
+      </div>
+      <button class="permission-button" id="request-camera-btn">
+        Allow Camera Access
+      </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+      <div class="loading-animation"></div>
+      <div class="loading-text">Loading AR...</div>
+    </div>
+
+    <!-- Scanning Overlay -->
+    <div id="scanning-overlay">
+      <div class="scanning-text">Point camera at marker</div>
+      <div class="scanning-animation"></div>
+    </div>
+
+    <!-- Error Overlay -->
+    <div id="error-overlay" class="hidden">
+      <div class="error-text">
+        <h2>An Error Occurred</h2>
+        <p id="error-message">Loading error information...</p>
+      </div>
+      <button class="retry-button" onclick="location.reload()">
+        Try Again
+      </button>
+    </div>
+
+    <!-- A-Frame Scene -->
+    <a-scene
+      id="ar-scene"
+      mindar-image="imageTargetSrc: ./marker.mind; uiError: #error-overlay; uiLoading: #loading-overlay; uiScanning: #scanning-overlay"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights, antialias: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      embedded
+    >
+      <a-assets>
+        <!-- Preload 3D model -->
+        <a-asset-item
+          id="cyberpunk-car-model"
+          src="./cyberpunk_car_gltf/scene.gltf"
+        ></a-asset-item>
+      </a-assets>
+
+      <a-camera
+        position="0 0 0"
+        look-controls="enabled: false"
+        wasd-controls="enabled: false"
+      ></a-camera>
+
+      <!-- AR Content - Triggered by Marker -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- Cyberpunk Car 3D Model -->
+        <a-gltf-model
+          id="cyberpunk-car"
+          src="./cyberpunk_car_gltf/scene.gltf"
+          position="0 0 0"
+          scale="0.02 0.02 0.02"
+          rotation="0 0 0"
+          visible="false"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 10000"
+        ></a-gltf-model>
+
+        <!-- Fallback: Simple car representation if model not loaded -->
+        <a-box
+          id="fallback-car"
+          position="0 0.3 0"
+          width="1.5"
+          height="0.6"
+          depth="0.8"
+          color="#4caf50"
+          opacity="0.8"
+          visible="false"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
+        ></a-box>
+
+        <!-- Loading indicator -->
+        <a-text
+          id="loading-text"
+          value="Loading Cyberpunk Car..."
+          position="0 1.5 0"
+          align="center"
+          color="#4caf50"
+          width="8"
+          scale="0.8 0.8 0.8"
+          visible="true"
+          side="double"
+        ></a-text>
+
+        <!-- Enhanced Lighting for 3D Model -->
+        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+        <a-light
+          type="directional"
+          position="2 2 2"
+          color="#ffffff"
+          intensity="1.2"
+        ></a-light>
+        <a-light
+          type="directional"
+          position="-2 2 -2"
+          color="#4a9eff"
+          intensity="0.6"
+        ></a-light>
+        <a-light
+          type="point"
+          position="0 2 2"
+          color="#ff6b9d"
+          intensity="0.5"
+        ></a-light>
+        <a-light
+          type="point"
+          position="0 2 -2"
+          color="#4caf50"
+          intensity="0.4"
+        ></a-light>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      let cameraPermissionGranted = false;
+      let assetStatus = [];
+
+      // Define all assets to check
+      const assetsToCheck = [
+        { name: "Marker File", path: "./marker.mind", type: "file" },
+        {
+          name: "3D Model (GLTF)",
+          path: "./cyberpunk_car_gltf/scene.gltf",
+          type: "file",
+        },
+        {
+          name: "3D Model Binary",
+          path: "./cyberpunk_car_gltf/scene.bin",
+          type: "file",
+        },
+        {
+          name: "Base Color Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_baseColor.png",
+          type: "texture",
+        },
+        {
+          name: "Emissive Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_emissive.png",
+          type: "texture",
+        },
+        {
+          name: "Metallic Roughness Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_metallicRoughness.png",
+          type: "texture",
+        },
+        {
+          name: "Normal Map Texture",
+          path: "./cyberpunk_car_gltf/textures/cb_car_normal.png",
+          type: "texture",
+        },
+      ];
+
+      // Check asset accessibility
+      async function checkAssetAccessibility(asset) {
+        try {
+          const response = await fetch(asset.path, { method: "HEAD" });
+          return {
+            ...asset,
+            accessible: response.ok,
+            status: response.ok ? "accessible" : "not-accessible",
+            statusCode: response.status,
+            statusText: response.statusText,
+          };
+        } catch (error) {
+          return {
+            ...asset,
+            accessible: false,
+            status: "not-accessible",
+            error: error.message,
+          };
+        }
+      }
+
+      // Check all assets
+      async function checkAllAssets() {
+        const assetStatusOverlay = document.getElementById(
+          "asset-status-overlay"
+        );
+        const assetList = document.getElementById("asset-list");
+
+        assetStatusOverlay.classList.remove("hidden");
+        assetList.innerHTML = "";
+
+        // Show checking status
+        assetsToCheck.forEach((asset) => {
+          const assetItem = document.createElement("div");
+          assetItem.className = "asset-item checking";
+          assetItem.innerHTML = `
+            <div class="asset-name">${asset.name}</div>
+            <div class="asset-status checking">Checking...</div>
+          `;
+          assetList.appendChild(assetItem);
+        });
+
+        // Check each asset
+        const results = await Promise.all(
+          assetsToCheck.map((asset) => checkAssetAccessibility(asset))
+        );
+
+        assetStatus = results;
+        assetList.innerHTML = "";
+
+        // Display results
+        results.forEach((result) => {
+          const assetItem = document.createElement("div");
+          assetItem.className = `asset-item ${result.status}`;
+
+          const statusText = result.accessible
+            ? "✓ Accessible"
+            : `✗ Not Accessible${
+                result.statusCode ? ` (${result.statusCode})` : ""
+              }`;
+
+          assetItem.innerHTML = `
+            <div class="asset-name" title="${result.path}">${result.name}<br><small style="opacity: 0.7; font-weight: normal;">${result.path}</small></div>
+            <div class="asset-status ${result.status}">${statusText}</div>
+          `;
+          assetList.appendChild(assetItem);
+        });
+      }
+
+      // Check camera permission status
+      async function checkCameraPermission() {
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error("Browser does not support getUserMedia");
+            return false;
+          }
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+
+          stream.getTracks().forEach((track) => track.stop());
+          console.log("Camera permission granted");
+          return true;
+        } catch (error) {
+          console.error("Camera permission error:", error);
+          return false;
+        }
+      }
+
+      // Check if marker.mind file exists
+      async function checkMarkerFile() {
+        try {
+          const response = await fetch("./marker.mind", { method: "HEAD" });
+          if (!response.ok) {
+            throw new Error("marker.mind file not found");
+          }
+          return true;
+        } catch (error) {
+          console.error("Error checking marker.mind:", error);
+          return false;
+        }
+      }
+
+      // Request camera permission explicitly
+      async function requestCameraPermission() {
+        const permissionOverlay = document.getElementById(
+          "camera-permission-overlay"
+        );
+        const loadingOverlay = document.getElementById("loading-overlay");
+        const requestBtn = document.getElementById("request-camera-btn");
+
+        requestBtn.disabled = true;
+        requestBtn.textContent = "Requesting permission...";
+
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error(
+              "Browser does not support camera access. Please use the latest Chrome, Edge, or Firefox."
+            );
+          }
+
+          const cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          });
+
+          console.log("Camera access granted!");
+          cameraPermissionGranted = true;
+
+          permissionOverlay.classList.add("hidden");
+          loadingOverlay.classList.remove("hidden");
+
+          cameraStream.getTracks().forEach((track) => track.stop());
+
+          // Check marker file and initialize AR
+          await initializeAR();
+        } catch (error) {
+          console.error("Error requesting camera:", error);
+          requestBtn.disabled = false;
+          requestBtn.textContent = "Allow Camera Access";
+
+          let errorMessage = "Failed to access camera. ";
+          if (error.name === "NotAllowedError") {
+            errorMessage +=
+              "Camera permission denied. Please allow camera access in browser settings and refresh the page.";
+          } else if (error.name === "NotFoundError") {
+            errorMessage += "Camera not found.";
+          } else if (error.name === "NotReadableError") {
+            errorMessage += "Camera is being used by another application.";
+          } else {
+            errorMessage += error.message || "An unknown error occurred.";
+          }
+
+          showError(errorMessage);
+        }
+      }
+
+      // Check if GLTF model file exists
+      async function checkModelFile() {
+        try {
+          const response = await fetch("./cyberpunk_car_gltf/scene.gltf", {
+            method: "HEAD",
+          });
+          if (!response.ok) {
+            throw new Error("scene.gltf file not found");
+          }
+          console.log("✅ Model file (scene.gltf) found");
+          return true;
+        } catch (error) {
+          console.error("❌ Error checking scene.gltf:", error);
+          return false;
+        }
+      }
+
+      // Initialize AR
+      async function initializeAR() {
+        const markerExists = await checkMarkerFile();
+        if (!markerExists) {
+          document.getElementById("loading-overlay").classList.add("hidden");
+          showError(
+            '<strong style="color: #ff9800;">marker.mind file not found!</strong><br><br>' +
+              "Please compile the marker image first:<br>" +
+              "1. Upload AR-TESTING-marker.png to https://hiukim.github.io/mind-ar-js/tools/compile<br>" +
+              "2. Download the generated marker.mind file<br>" +
+              "3. Save the marker.mind file in this project folder"
+          );
+          return;
+        }
+
+        // Check model file
+        const modelExists = await checkModelFile();
+        if (!modelExists) {
+          console.warn("⚠️ Model file not found, but continuing...");
+        }
+
+        // Show AR scene
+        const arScene = document.getElementById("ar-scene");
+        arScene.classList.add("visible");
+        arScene.style.display = "block";
+        console.log("AR Scene initialized and visible");
+      }
+
+      // Show error
+      function showError(message) {
+        document.getElementById("error-message").innerHTML = message;
+        document.getElementById("error-overlay").classList.remove("hidden");
+      }
+
+      // Test model file access
+      async function testModelAccess() {
+        try {
+          const response = await fetch("./cyberpunk_car_gltf/scene.gltf");
+          if (response.ok) {
+            console.log("✅ Model file accessible:", response.url);
+            return true;
+          } else {
+            console.error(
+              "❌ Model file not accessible:",
+              response.status,
+              response.statusText
+            );
+            return false;
+          }
+        } catch (error) {
+          console.error("❌ Error accessing model file:", error);
+          return false;
+        }
+      }
+
+      // Add event listener to request camera button
+      document
+        .getElementById("request-camera-btn")
+        .addEventListener("click", requestCameraPermission);
+
+      // Handle AR events - wait for scene to be ready
+      const scene = document.getElementById("ar-scene");
+
+      // Wait for A-Frame to initialize
+      scene.addEventListener("loaded", () => {
+        console.log("A-Frame scene loaded");
+
+        // Ensure scene is playing and rendering
+        const sceneEl = document.querySelector("a-scene");
+        if (sceneEl) {
+          // Force scene to play
+          if (!sceneEl.isPlaying) {
+            sceneEl.play();
+          }
+
+          // Ensure continuous rendering
+          requestAnimationFrame(() => {
+            if (sceneEl.renderer && !sceneEl.renderer.animationLoop) {
+              sceneEl.renderer.setAnimationLoop(() => {
+                if (sceneEl.isPlaying) {
+                  sceneEl.render();
+                }
+              });
+            }
+          });
+        }
+
+        // Wait a bit for MindAR to initialize
+        setTimeout(() => {
+          const targetEntity = document.querySelector("[mindar-image-target]");
+          console.log("Target entity:", targetEntity);
+
+          if (targetEntity) {
+            targetEntity.addEventListener("targetFound", () => {
+              console.log("✅ Target found! Marker detected!");
+              document
+                .getElementById("scanning-overlay")
+                .classList.add("hidden");
+
+              // Get model and UI elements
+              const carModel = document.getElementById("cyberpunk-car");
+              const loadingText = document.getElementById("loading-text");
+              const fallbackCar = document.getElementById("fallback-car");
+              const sceneEl = document.querySelector("a-scene");
+
+              if (carModel && sceneEl) {
+                // Function to show model with proper rendering
+                const showModel = () => {
+                  console.log("🎨 Showing 3D model...");
+
+                  // Ensure object3D exists
+                  if (carModel.object3D) {
+                    carModel.object3D.visible = true;
+                    carModel.object3D.updateMatrixWorld(true);
+
+                    // Traverse and make all children visible
+                    carModel.object3D.traverse((child) => {
+                      if (child.visible !== undefined) {
+                        child.visible = true;
+                      }
+                      // Force material update
+                      if (child.material) {
+                        child.material.needsUpdate = true;
+                      }
+                    });
+                  }
+
+                  // Set A-Frame visible attribute
+                  carModel.setAttribute("visible", true);
+
+                  // Force multiple render cycles to ensure visibility
+                  const forceRender = () => {
+                    if (sceneEl.renderer && sceneEl.camera) {
+                      // Update matrices
+                      sceneEl.object3D.updateMatrixWorld(true);
+
+                      // Force render
+                      sceneEl.renderer.render(sceneEl.object3D, sceneEl.camera);
+
+                      // Also trigger A-Frame's render
+                      if (sceneEl.render) {
+                        sceneEl.render();
+                      }
+                    }
+                  };
+
+                  // Force render immediately
+                  forceRender();
+
+                  // Force render in next frame
+                  requestAnimationFrame(() => {
+                    forceRender();
+
+                    // Force render again after a short delay
+                    setTimeout(() => {
+                      forceRender();
+                    }, 50);
+                  });
+
+                  // Hide loading text and fallback
+                  if (loadingText) {
+                    loadingText.setAttribute("visible", false);
+                  }
+                  if (fallbackCar) {
+                    fallbackCar.setAttribute("visible", false);
+                  }
+
+                  console.log("✅ Model visibility set, rendering forced");
+                };
+
+                // Check if model is already loaded
+                const checkAndShowModel = () => {
+                  if (
+                    carModel.object3D &&
+                    carModel.object3D.children.length > 0
+                  ) {
+                    // Model is loaded
+                    console.log("✅ Model already loaded, showing immediately");
+                    showModel();
+                    return true;
+                  }
+                  return false;
+                };
+
+                // Try to show immediately if already loaded
+                if (!checkAndShowModel()) {
+                  // Model not loaded yet, wait for it
+                  console.log("⏳ Waiting for model to load...");
+
+                  const handleModelLoaded = () => {
+                    console.log("✅ Model loaded event fired");
+                    showModel();
+                  };
+
+                  // Listen for model loaded events
+                  carModel.addEventListener("model-loaded", handleModelLoaded, {
+                    once: true,
+                  });
+                  carModel.addEventListener("loaded", handleModelLoaded, {
+                    once: true,
+                  });
+
+                  // Also poll for model loading (fallback)
+                  let pollCount = 0;
+                  const maxPolls = 50; // 5 seconds max
+                  const pollInterval = setInterval(() => {
+                    pollCount++;
+                    if (checkAndShowModel()) {
+                      clearInterval(pollInterval);
+                    } else if (pollCount >= maxPolls) {
+                      console.warn("⚠️ Model loading timeout, showing anyway");
+                      showModel();
+                      clearInterval(pollInterval);
+                    }
+                  }, 100);
+                } else {
+                  // Model already loaded, show immediately
+                  showModel();
+                }
+              }
+            });
+
+            targetEntity.addEventListener("targetLost", () => {
+              console.log("❌ Target lost! Marker not visible.");
+              document
+                .getElementById("scanning-overlay")
+                .classList.remove("hidden");
+
+              // Hide model when target is lost (optional)
+              const carModel = document.getElementById("cyberpunk-car");
+              if (carModel) {
+                carModel.setAttribute("visible", false);
+              }
+            });
+          } else {
+            console.warn("⚠️ Target entity not found!");
+          }
+        }, 1000);
+      });
+
+      scene.addEventListener("arReady", () => {
+        console.log("✅ AR Ready - MindAR initialized successfully");
+        document.getElementById("loading-overlay").classList.add("hidden");
+
+        // Ensure scene is actively rendering
+        const sceneEl = document.querySelector("a-scene");
+        if (sceneEl) {
+          // Force scene to start rendering loop
+          if (!sceneEl.isPlaying) {
+            sceneEl.play();
+          }
+
+          // Ensure renderer is active
+          if (sceneEl.renderer) {
+            sceneEl.renderer.setAnimationLoop(() => {
+              if (sceneEl.isPlaying) {
+                sceneEl.render();
+              }
+            });
+          }
+        }
+
+        // Pre-load model to ensure it's ready when marker is detected
+        const carModel = document.getElementById("cyberpunk-car");
+        if (carModel) {
+          // Force model to load
+          carModel.setAttribute("src", "./cyberpunk_car_gltf/scene.gltf");
+
+          // Ensure model starts hidden but ready
+          carModel.setAttribute("visible", false);
+          if (carModel.object3D) {
+            carModel.object3D.visible = false;
+          }
+
+          // Listen for model loaded
+          const handleModelPreload = () => {
+            console.log("✅ Model preloaded successfully");
+            // Keep it hidden until marker is detected
+            carModel.setAttribute("visible", false);
+            if (carModel.object3D) {
+              carModel.object3D.visible = false;
+            }
+          };
+
+          carModel.addEventListener("model-loaded", handleModelPreload, {
+            once: true,
+          });
+          carModel.addEventListener("loaded", handleModelPreload, {
+            once: true,
+          });
+
+          // Also check if model loads quickly
+          setTimeout(() => {
+            if (carModel.object3D && carModel.object3D.children.length > 0) {
+              console.log("✅ Model loaded (verified)");
+            }
+          }, 1000);
+        }
+      });
+
+      scene.addEventListener("arError", (event) => {
+        console.error("❌ AR Error:", event);
+        document.getElementById("loading-overlay").classList.add("hidden");
+        showError(
+          "An error occurred while loading AR.<br>" +
+            "Make sure marker.mind file exists and camera has access.<br>" +
+            "Check browser console (F12) for error details."
+        );
+      });
+
+      // Asset Status Overlay Event Listeners
+      document
+        .getElementById("show-asset-status-btn")
+        .addEventListener("click", () => {
+          checkAllAssets();
+        });
+
+      document
+        .getElementById("close-asset-status-btn")
+        .addEventListener("click", () => {
+          document
+            .getElementById("asset-status-overlay")
+            .classList.add("hidden");
+        });
+
+      // Auto-check assets on page load (for mobile compatibility)
+      window.addEventListener("DOMContentLoaded", async () => {
+        // Test model access first
+        await testModelAccess();
+
+        // Check all assets in background
+        checkAllAssets().then(() => {
+          // Hide asset status overlay after checking (user can open it manually)
+          setTimeout(() => {
+            document
+              .getElementById("asset-status-overlay")
+              .classList.add("hidden");
+          }, 3000);
+        });
+
+        const hasPermission = await checkCameraPermission();
+
+        if (hasPermission) {
+          document
+            .getElementById("camera-permission-overlay")
+            .classList.add("hidden");
+          document.getElementById("loading-overlay").classList.remove("hidden");
+          await initializeAR();
+        } else {
+          document
+            .getElementById("camera-permission-overlay")
+            .classList.remove("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>
