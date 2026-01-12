@@ -22,18 +22,147 @@
         ></a-asset-item>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: true"></a-camera>
+
+      <!-- Lighting for better visibility from all angles -->
+      <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+      <a-light
+        type="directional"
+        position="2 2 2"
+        color="#ffffff"
+        intensity="1.2"
+      ></a-light>
+      <a-light
+        type="directional"
+        position="-2 2 -2"
+        color="#ffffff"
+        intensity="0.6"
+      ></a-light>
 
       <a-entity mindar-image-target="targetIndex: 0">
         <a-gltf-model
-          rotation="0 0 0 "
-          position="0 0 0.1"
-          scale="0.005 0.005 0.005"
+          id="carModel"
+          rotation="-5 180 0"
+          position="0 0 0"
+          scale="0.003 0.003 0.003"
           src="#avatarModel"
           animation="property: position; to: 0 0.1 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
         >
         </a-gltf-model>
       </a-entity>
     </a-scene>
+
+    <script>
+      // Touch rotation component for the car
+      (function () {
+        let isRotating = false;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let currentRotationY = 180; // Initial Y rotation
+        let currentRotationX = -5; // Initial X rotation
+
+        const carModel = document.getElementById("carModel");
+        const scene = document.querySelector("a-scene");
+
+        if (!carModel) {
+          console.warn("Car model not found");
+          return;
+        }
+
+        // Get current rotation from the model
+        function getCurrentRotation() {
+          const rotation = carModel.getAttribute("rotation");
+          return {
+            x: rotation.x || 0,
+            y: rotation.y || 0,
+            z: rotation.z || 0,
+          };
+        }
+
+        // Set rotation on the model
+        function setRotation(x, y, z) {
+          carModel.setAttribute("rotation", `${x} ${y} ${z}`);
+          currentRotationX = x;
+          currentRotationY = y;
+        }
+
+        // Touch start handler
+        function onTouchStart(event) {
+          if (event.touches.length === 1) {
+            isRotating = true;
+            lastTouchX = event.touches[0].clientX;
+            lastTouchY = event.touches[0].clientY;
+            event.preventDefault();
+          }
+        }
+
+        // Touch move handler
+        function onTouchMove(event) {
+          if (isRotating && event.touches.length === 1) {
+            const touchX = event.touches[0].clientX;
+            const touchY = event.touches[0].clientY;
+
+            const deltaX = touchX - lastTouchX;
+            const deltaY = touchY - lastTouchY;
+
+            // Rotate around Y axis (horizontal swipe)
+            const rotationSpeedY = 0.5;
+            const rotationSpeedX = 0.3;
+
+            // Update rotation
+            let newRotationY = currentRotationY + deltaX * rotationSpeedY;
+            let newRotationX = currentRotationX - deltaY * rotationSpeedX;
+
+            // Limit X rotation to prevent flipping
+            newRotationX = Math.max(-45, Math.min(45, newRotationX));
+
+            setRotation(newRotationX, newRotationY, 0);
+
+            lastTouchX = touchX;
+            lastTouchY = touchY;
+            event.preventDefault();
+          }
+        }
+
+        // Touch end handler
+        function onTouchEnd(event) {
+          isRotating = false;
+        }
+
+        // Wait for scene to load
+        scene.addEventListener("loaded", () => {
+          // Add touch event listeners to the scene canvas
+          const canvas = scene.canvas;
+          if (canvas) {
+            canvas.addEventListener("touchstart", onTouchStart, {
+              passive: false,
+            });
+            canvas.addEventListener("touchmove", onTouchMove, {
+              passive: false,
+            });
+            canvas.addEventListener("touchend", onTouchEnd, { passive: false });
+            canvas.addEventListener("touchcancel", onTouchEnd, {
+              passive: false,
+            });
+          }
+
+          // Also add to document body as fallback
+          document.body.addEventListener("touchstart", onTouchStart, {
+            passive: false,
+          });
+          document.body.addEventListener("touchmove", onTouchMove, {
+            passive: false,
+          });
+          document.body.addEventListener("touchend", onTouchEnd, {
+            passive: false,
+          });
+          document.body.addEventListener("touchcancel", onTouchEnd, {
+            passive: false,
+          });
+
+          console.log("Touch rotation controls enabled");
+        });
+      })();
+    </script>
   </body>
 </html>
