@@ -53,13 +53,16 @@
     </a-scene>
 
     <script>
-      // Touch rotation component for the car
+      // Touch rotation and device orientation component for the car
       (function () {
         let isRotating = false;
         let lastTouchX = 0;
         let lastTouchY = 0;
         let currentRotationY = 180; // Initial Y rotation
         let currentRotationX = -5; // Initial X rotation
+        let useDeviceOrientation = false;
+        let initialBeta = null;
+        let initialGamma = null;
 
         const carModel = document.getElementById("carModel");
         const scene = document.querySelector("a-scene");
@@ -86,10 +89,49 @@
           currentRotationY = y;
         }
 
+        // Device orientation handler
+        function onDeviceOrientation(event) {
+          if (!useDeviceOrientation) return;
+
+          // Beta: front-to-back tilt (-180 to 180)
+          // Gamma: left-to-right tilt (-90 to 90)
+          const beta = event.beta; // Up/down movement
+          const gamma = event.gamma; // Left/right movement
+
+          // Initialize reference angles on first reading
+          if (initialBeta === null || initialGamma === null) {
+            initialBeta = beta;
+            initialGamma = gamma;
+            return;
+          }
+
+          // Calculate movement deltas
+          const deltaBeta = beta - initialBeta;
+          const deltaGamma = gamma - initialGamma;
+
+          // Map to 270 degree range
+          // Beta (up/down) controls X rotation: -135 to 135 degrees
+          // Gamma (left/right) controls Y rotation: -135 to 135 degrees
+          const maxRotation = 135; // Half of 270 degrees
+          const betaRange = 90; // Typical beta range for phone movement
+          const gammaRange = 90; // Typical gamma range for phone movement
+
+          // Scale the movement to 270 degree rotation
+          let newRotationX = -5 + (deltaBeta / betaRange) * maxRotation;
+          let newRotationY = 180 + (deltaGamma / gammaRange) * maxRotation;
+
+          // Clamp rotations to stay within reasonable bounds
+          newRotationX = Math.max(-135, Math.min(135, newRotationX));
+          newRotationY = Math.max(45, Math.min(315, newRotationY));
+
+          setRotation(newRotationX, newRotationY, 0);
+        }
+
         // Touch start handler
         function onTouchStart(event) {
           if (event.touches.length === 1) {
             isRotating = true;
+            useDeviceOrientation = false; // Disable device orientation during touch
             lastTouchX = event.touches[0].clientX;
             lastTouchY = event.touches[0].clientY;
             event.preventDefault();
@@ -127,6 +169,44 @@
         // Touch end handler
         function onTouchEnd(event) {
           isRotating = false;
+          // Re-enable device orientation after touch ends
+          setTimeout(() => {
+            if (!isRotating) {
+              useDeviceOrientation = true;
+              initialBeta = null;
+              initialGamma = null;
+            }
+          }, 100);
+        }
+
+        // Request device orientation permission
+        function requestDeviceOrientation() {
+          if (
+            typeof DeviceOrientationEvent !== "undefined" &&
+            typeof DeviceOrientationEvent.requestPermission === "function"
+          ) {
+            DeviceOrientationEvent.requestPermission()
+              .then((response) => {
+                if (response === "granted") {
+                  useDeviceOrientation = true;
+                  window.addEventListener(
+                    "deviceorientation",
+                    onDeviceOrientation
+                  );
+                  console.log("Device orientation permission granted");
+                } else {
+                  console.log("Device orientation permission denied");
+                }
+              })
+              .catch((error) => {
+                console.error("Error requesting device orientation:", error);
+              });
+          } else {
+            // For browsers that don't require permission
+            useDeviceOrientation = true;
+            window.addEventListener("deviceorientation", onDeviceOrientation);
+            console.log("Device orientation enabled (no permission required)");
+          }
         }
 
         // Wait for scene to load
@@ -159,6 +239,11 @@
           document.body.addEventListener("touchcancel", onTouchEnd, {
             passive: false,
           });
+
+          // Enable device orientation after a short delay
+          setTimeout(() => {
+            requestDeviceOrientation();
+          }, 500);
 
           console.log("Touch rotation controls enabled");
         });
