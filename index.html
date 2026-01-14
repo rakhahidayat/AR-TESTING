@@ -50,12 +50,11 @@
         ></a-plane>
         <a-gltf-model
           id="carModel"
-          rotation="0 180 0"
-          position="0 0 0"
+          rotation="-270 -180 -180"
+          position="0 0 1"
           scale="0.003 0.003 0.003"
           src="#avatarModel"
-          animation="property: position; to: 0 0.1 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
-          animation__rotate="property: rotation; to: 0 540 0; dur: 10000; easing: linear; loop: true"
+          animation__rotate="property: rotation; to: 0 0 0; dur: 20000; easing: easeInOutQuad; loop: true"
         >
         </a-gltf-model>
       </a-entity>
